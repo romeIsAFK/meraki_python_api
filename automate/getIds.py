@@ -1,5 +1,5 @@
 readMe = """
-v1.1 
+v1.2
 
 Depending on OS, use python or python3 to run this script.
 
