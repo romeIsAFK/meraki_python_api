@@ -41,7 +41,7 @@ def getNetworkID(organizationList):
             response = requests.get(queryURL, headers= APIKEY)
             networkInfo = json.loads(response.text)
             for info in networkInfo:
-                networkList.append(f'Name: {info["name"]}, ID = {info["id"]}')
+                networkList.append(f'Name: {info["name"]}, ID: {info["id"]}')
             orgDictionary[f'Organization name: {orgName}, ID: {orgInfo[orgName]}'] = networkList
     return orgDictionary
 
