@@ -1,3 +1,17 @@
+readMe = """
+v1.1 
+
+Depending on OS, use python or python3 to run this script.
+
+Usage:
+    python getids.py
+
+Notes:
+* NEVER hardcode API key to this script, instead place key as an environmental variable and name it as MERAKI_DASHBOARD_API_KEY.
+* This script only only uses get request and is not meant to make modifications to the Meraki Dashboard.
+* This script was built to be used with 3.10.7
+"""
+
 import requests
 import json
 import os
