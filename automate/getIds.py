@@ -8,7 +8,7 @@ Usage:
 
 Notes:
 * NEVER hardcode API key to this script, instead place key as an environmental variable and name it as MERAKI_DASHBOARD_API_KEY.
-* This script only only uses get request and is not meant to make modifications to the Meraki Dashboard.
+* This script only uses get request and is not meant to make modifications to the Meraki Dashboard.
 * This script was built to be used with 3.10.7
 """
 
@@ -21,7 +21,7 @@ APIKEY = {"X-Cisco-Meraki-API-Key": os.getenv("MERAKI_DASHBOARD_API_KEY")}
 
 
 def getOrgID():
-    queryURL = URL + "/organizations"
+    queryURL = URL + '/organizations'
     response = requests.get(queryURL, headers=APIKEY)
     orgInfo = json.loads(response.text)
     organizationDictionary = {}
@@ -34,20 +34,22 @@ def getOrgID():
 
 def getNetworkID(organizationList):
     orgDictionary = {}
-    networkList = []
+    networkDictionary = {}
     for orgInfo in organizationList:
         for orgName in orgInfo:
-            queryURL = URL + f"/organizations/{orgInfo[orgName]}/networks"
+            queryURL = URL + f'/organizations/{orgInfo[orgName]}/networks'
             response = requests.get(queryURL, headers= APIKEY)
             networkInfo = json.loads(response.text)
             for info in networkInfo:
-                networkList.append(f'Name: {info["name"]}, ID: {info["id"]}')
-            orgDictionary[f'Organization name: {orgName}, ID: {orgInfo[orgName]}'] = networkList
+                networkDictionary[info["name"]] = info["id"]
+            orgDictionary[f'{orgName}, {orgInfo[orgName]}'] = networkDictionary
     return orgDictionary
 
 
 if __name__ == "__main__":
     orgID = getOrgID()
-    networks = getNetworkID(orgID)
-    for network in networks:
-        print(f'{network}, Networks: {networks[network]}')
+    orgList = getNetworkID(orgID)
+
+    for organization in orgList:
+        print(f'Organization: {organization}, Networks: {orgList[organization]}')
+
