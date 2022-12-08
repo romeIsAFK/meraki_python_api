@@ -9,7 +9,7 @@ python getNetworkDevices.py
 
 Notes:
 * NEVER hardcode API key to this script, instead place key as an environmental variable named as MERAKI_DASHBOARD_API_KEY.
-* This script only uses get request and is not meant to make modifications to the Meraki Dashboard.
+* This script only uses get requests and is not meant to make modifications to the Meraki Dashboard.
 * This script was built to be used with 3.10.7
 * Install the Meraki library by using pip install Meraki.
 """
@@ -33,17 +33,17 @@ def getOrgId(dashboard):
 def getOrgNets(dashboard, orgId):
     networkList = []
     networksQuery = dashboard.organizations.getOrganizationNetworks(orgId)
-    for i in networksQuery:
-        networkList.append(i['id'])
+    for network in networksQuery:
+        networkList.append(network['id'])
     return networkList
 
 
 def getDevices(dashboard, networkdId):
-    apDeviceQuery = dashboard.networks.getNetworkDevices(networkdId)
-    for device in apDeviceQuery:
+    DeviceQuery = dashboard.networks.getNetworkDevices(networkdId)
+    for device in DeviceQuery:
         if 'name' not in device:
             device['name'] = None
-    return apDeviceQuery
+    return DeviceQuery
 
 
 def main():
@@ -60,16 +60,16 @@ def main():
         for netId in netIdDict[orgInfo]:
             deviceList.append(getDevices(dashboard, netId))
 
-        print(f'{orgInfo}')
+        print(f'{orgInfo}\n')
 
         for deviceInfo in deviceList: 
             for device in deviceInfo:
                 print(f'NAME: {device["name"]}')
                 print(f'MAC: {device["mac"]}')
-                print(f'Serial: {device["serial"]}')
+                print(f'SERIAL: {device["serial"]}')
                 print(f'MODEL: {device["model"]}')
                 print(f'NETWORK ID: {device["networkId"]}')
-                print(f'Address: {device["address"]}\n')
+                print(f'ADDRESS: {device["address"]}\n')
 
 
 if __name__ == "__main__":
