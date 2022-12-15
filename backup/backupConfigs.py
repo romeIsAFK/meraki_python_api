@@ -15,3 +15,5 @@ import meraki.aio
 import requests
 import yaml
 
+backupFileFormat = 'json'
+
