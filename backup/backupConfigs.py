@@ -1,5 +1,6 @@
 readMe = """
 Meraki SDK will need to be installed from https://github.com/meraki/dashboard-api-python
+-or-
 You can install the necessary prerequisites using:
 pip install -r requirements.txt
 
@@ -10,8 +11,8 @@ Depending on how python is installed on your system, you may have to use py, pyt
 Usage:
     py backupConfigs.py -o <orgId> -k <apiKey> [-t <tag>] [-y]
 
-Please do not hardcode the API key to this script.
-It is recommended to instead set the API key as an environmental variable named MERAKI_DASHBOARD_API_KEY.
+Please do not hardcode an API key to this script.
+It is recommended to instead set the API key as an environmental variable named MERAKI_DASHBOARD_API_KEY if define a variable value is necessary.
 """
 
 import asyncio
@@ -32,10 +33,10 @@ backupFileFormat = 'json'
 getOperationMappingsFile = 'backupGetOperation.csv'
 defaultConfigsDirectory = 'defaults'
 
-orgID = None
-totalCalls = 0
-defaultConfigs = []
-devices = networks = templates = []
+ORGID = None
+TOTALCALLS = 0
+DEFAULTCONFIGS = []
+DEVICES = NETWORKS = TEMPLATES = []
 
 # def fileType(file, data, path=''):
 #     if path and path[-1] != '/':
@@ -45,8 +46,64 @@ devices = networks = templates = []
 #             proceed_saving = False
 #             if type(data) == dict and set(data.keys()) ==  {'rfProfileId', 'serial'}:
 
+
+async def mainSync(apiKey, operations, endpoints):
+    global DEVICES, NETWORKS, TEMPLATES
+
+    #NEEDS WORK
+
 def backupRun(apiKey, orgId):
-    global getOperationMappingsFile, defaultConfigsDirectory, defaultConfigs, orgID, totalCalls
+    global GETOPERATIONSMAPPINGSFILE, DEFAULTCONFIGSDIRECTORY, DEFAULTCONFIGS, ORGID, TOTALCALLS
+
+    start = datetime.now()
+    APIKEY = {"X-Cisco-Meraki-API-Key": apiKey}
+    spec = requests.get('https://api.meraki.com/api/v1/openapiSpec', headers=APIKEY).json()
+    currentOperations = []
+
+    for uri in spec['paths']:
+        methods = spec['paths'][uri]
+        if 'get' in methods and ('post' or 'put' in methods):
+            currentOperations.append(spec['paths'][uri]['get'])
+
+    outputFile = open('currentGetOperations.csv', mode = 'w', newline='\n')
+    fieldNames = ['operationId', 'tags', 'description', 'parameters']
+    csvWriter = csv.DictWriter(outputFile, fieldNames, quoting=csv.QUOTE_ALL, extrasaction='ignore')
+    csvWriter.writeheader()
+    for ops in currentOperations:
+        csvWriter.writerow(ops)
+    outputFile.close()
+    
+    inputMappings = []
+    with open(GETOPERATIONSMAPPINGSFILE, encoding='utf-8-sig') as fp:
+        csvReader = csv.DictReader(fp)
+        for row in csvReader:
+            inputMappings.append(row)
+
+    os.chdir(DEFAULTCONFIGSDIRECTORY)
+    files = os.listdir()
+    for file in files:
+        if '.json' in file:
+            with open(file) as fp:
+                data = json.load(fp)
+            DEFAULTCONFIGS.append(data)
+
+    os.chdir('..')
+
+    currentTime = datetime.now()
+    backupPath = f'backup_{orgId}_{currentTime:%Y-%m-%d_%H-%M-%S}'
+    os.mkdir(backupPath)
+    os.chdir(backupPath)
+
+    #Start of the backup
+    ORGID = orgId
+    backupLoop = asyncio.get_event_loop()
+    backupLoop.run_until_complete(mainAsync(apiKey,currentOperations, inputMappings))
+
+    #End of backup
+    end = datetime.now()
+    timeRan = end - start
+    return backupPath, timeRan, TOTALCALLS
+
 
 def estimatedTime(apiKey, orgId):
     try:
@@ -104,7 +161,7 @@ def main(arguments):
         if inputs:
             orgId = inputs.o[0]
             apiKey = inputs.k[0]
-            calls, minutes, totalCalls, networkCalls, deviceCalls, = estimatedTime(apiKey, orgId)
+            calls, minutes = estimatedTime(apiKey, orgId)
             minutes = f'{minutes} minutes' if minutes != 1 else '1 minute'
             message = f'Based on your organization, it is estimated that around {calls:,} API calls will be made, '
             message += f'so should not take longer than about {minutes} to finish running.\n'
