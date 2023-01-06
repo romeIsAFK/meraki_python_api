@@ -12,7 +12,7 @@ Usage:
     py backupConfigs.py -o <orgId> -k <apiKey> [-t <tag>] [-y]
 
 Please do not hardcode an API key to this script.
-It is recommended to instead set the API key as an environmental variable named MERAKI_DASHBOARD_API_KEY if define a variable value is necessary.
+It is recommended to instead set the API key as an environmental variable named MERAKI_DASHBOARD_API_KEY if defining a variable value is necessary.
 """
 
 import asyncio
@@ -35,6 +35,7 @@ defaultConfigsDirectory = 'defaults'
 
 ORGID = None
 TOTALCALLS = 0
+COMPLETEDOPERATIONS = set()
 DEFAULTCONFIGS = []
 DEVICES = NETWORKS = TEMPLATES = []
 
@@ -47,10 +48,90 @@ DEVICES = NETWORKS = TEMPLATES = []
 #             if type(data) == dict and set(data.keys()) ==  {'rfProfileId', 'serial'}:
 
 
-async def mainSync(apiKey, operations, endpoints):
-    global DEVICES, NETWORKS, TEMPLATES
-
+def generateFileName(operation):
+    return 0
     #NEEDS WORK
+
+async def backupOrg(dashboard, endpoints):
+    calls = []
+
+    for endpoint in endpoints:
+        logic = endpoint['Logic']
+        operation = endpoint['operationId']
+        fileName = generateFileName(operation)
+        tags = eval(endpoint['tag'])
+        scope = generateScope(tags)
+        functionalCall = f'dashboard.{scope}.{operation}(ORGID)'
+        
+        if operation.startswith('getOrganization') and logic not in ('skipped', 'script'):
+            params = [p['name'] for p in eval(endpoint['parameters'])]
+            if 'perPage' in params:
+                functionalCall = functionalCall[:-1] + ",totalPages='all')"
+            
+            calls.append(
+                {
+                    'operation': operation,
+                    'functionCall': functionalCall,
+                    'fileName': fileName,
+                    'filePath':'',
+                }
+            )
+    await makeCalls(dashboard, calls)
+    #NEEDS WORK
+
+async def backupDevices(dashboard, endpoints, networks, devices):
+    return 0
+    #NEEDS WORK
+
+async def backupApplianceVlans(dashboard, networks):
+    return 0
+    #NEEDS WORK
+
+async def backupMsProfiles(dashboard, templates):
+    return 0
+    #NEEDS WORK
+
+async def backupMsProfilePorts(dashboard, templates):
+    return 0
+    #NEEDS WORK
+
+async def backupMrSsids(dashboard, endpoints, network):
+    return 0
+    #NEEDS WORK
+
+async def backupBleSettings(dashboard, networks, devices):
+    return 0
+    #NEEDS WORK
+
+
+async def mainAsync(apiKey, operations, endpoints):
+    global DEVICES, NETWORKS, TEMPLATES
+    async with meraki.aio.AsyncDashboardAPI(apiKey, maximum_concurrent_requests=3, maximum_retries=4, print_console=True, suppress_logging=False) as dashboard:
+        
+        await backupOrg(dashboard, endpoints)
+
+        await backupDevices(dashboard, endpoints, NETWORKS + TEMPLATES, DEVICES)
+
+        await backupApplianceVlans(dashboard, NETWORKS + TEMPLATES)
+
+        await backupMsProfiles(dashboard, TEMPLATES)
+
+        await backupMsProfilePorts(dashboard, TEMPLATES)
+
+        await backupMrSsids(dashboard, NETWORKS + TEMPLATES)
+
+        await backupBleSettings(dashboard, NETWORKS, DEVICES)
+    
+    for endpoint in endpoints:
+        if endpoint['Logic'] == 'skipped':
+            operation = endpoint['operationId']
+            COMPLETEDOPERATIONS.add(operation)
+    unfinished = [operation for operation in operations if operation['operationId'] not in COMPLETEDOPERATIONS]
+    if unfinished:
+        print(f'{len(unfinished)} API endpoints that were not called during this backup process:')
+        for operation in unfinished:
+            print(operation['operationId'])
+
 
 def backupRun(apiKey, orgId):
     global GETOPERATIONSMAPPINGSFILE, DEFAULTCONFIGSDIRECTORY, DEFAULTCONFIGS, ORGID, TOTALCALLS
@@ -164,7 +245,7 @@ def main(arguments):
             calls, minutes = estimatedTime(apiKey, orgId)
             minutes = f'{minutes} minutes' if minutes != 1 else '1 minute'
             message = f'Based on your organization, it is estimated that around {calls:,} API calls will be made, '
-            message += f'so should not take longer than about {minutes} to finish running.\n'
+            message += f'so the script should not take longer than about {minutes} to complete.\n'
             message += 'Do you want to continue? [Y/N]? '
             # message += f'`\n{totalCalls} totalcalls'
             # message += f'\n{networkCalls} networkcalls'
